@@ -3,6 +3,7 @@ use std::{io, str};
 use clap::{Parser, Subcommand};
 
 mod discovery;
+mod protocol;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
