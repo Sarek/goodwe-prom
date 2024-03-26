@@ -1,4 +1,4 @@
-use std::{io, str};
+use std::str;
 
 use clap::{Parser, Subcommand};
 use protocol::RequestMessage;
@@ -12,7 +12,7 @@ mod protocol;
 struct Cli {
     #[command(subcommand)]
     command: Commands,
-    target: Option<String>
+    target: Option<String>,
 }
 
 #[derive(Subcommand)]
@@ -29,11 +29,22 @@ enum Query {
     InverterInfo,
 }
 
-fn main() -> io::Result<()> {
+fn main() {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Discover => discovery::discover_inverters(),
-        _ => todo!("Function not implemented yet!"),
+        Commands::Discover => {
+            let _ = discovery::discover_inverters();
+        }
+        Commands::Request(Query::InverterInfo) => {
+            cli.target
+                .and_then(|target| {
+                    protocol::send_request(&target, RequestMessage::QueryIdInfo).ok()
+                })
+                .or_else(|| {
+                    println!("When performing a request, a target must be provided!");
+                    None
+                });
+        }
     }
 }
