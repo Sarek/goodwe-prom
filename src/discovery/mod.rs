@@ -1,5 +1,5 @@
-use std::{str, time::Duration};
 use std::net::UdpSocket;
+use std::{str, time::Duration};
 
 pub fn discover_inverters() -> std::io::Result<()> {
     println!("Trying to discover GoodWe inverters...");
