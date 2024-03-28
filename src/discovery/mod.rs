@@ -9,7 +9,7 @@ pub fn discover_inverters() -> std::io::Result<()> {
 
     sock.set_broadcast(true)?;
     sock.set_read_timeout(Some(Duration::from_secs(5)))?;
-    let _ = sock.send_to(&request.as_bytes(), remote_addr)?;
+    let _ = sock.send_to(request.as_bytes(), remote_addr)?;
     println!("Sent discovery trigger");
 
     let mut buf = [0; 1024];
