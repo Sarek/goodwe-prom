@@ -1,10 +1,12 @@
+#![feature(iter_next_chunk)]
+#![feature(iter_advance_by)]
+
 use std::str;
 
 use clap::{Parser, Subcommand};
-use protocol::RequestMessage;
 
 mod discovery;
-mod protocol;
+mod identify;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -19,14 +21,14 @@ struct Cli {
 enum Commands {
     /// Discover GoodWe inverters
     Discover,
-    /// Request a specific register
-    #[command(subcommand)]
-    Request(Query),
+    /// Identify the inverter and print the serial number and firmware version
+    Identify,
 }
 
 #[derive(Subcommand)]
 enum Query {
     InverterInfo,
+    RunningInfo,
 }
 
 fn main() {
@@ -36,14 +38,23 @@ fn main() {
         Commands::Discover => {
             let _ = discovery::discover_inverters();
         }
-        Commands::Request(Query::InverterInfo) => {
+        Commands::Identify => {
             cli.target
-                .and_then(|target| {
-                    protocol::send_request(&target, RequestMessage::QueryIdInfo).ok()
-                })
                 .or_else(|| {
                     println!("When performing a request, a target must be provided!");
                     None
+                })
+                .and_then(|target| match identify::query_id(&target) {
+                    Ok(id) => {
+                        println!("Inverter Identification");
+                        println!(" - Serial Number: {}", id.serial_number);
+                        println!(" - Firmware: {}", id.firmware);
+                        None::<String>
+                    }
+                    Err(e) => {
+                        println!("Error while identifying inverter: {e}");
+                        None::<String>
+                    }
                 });
         }
     }
