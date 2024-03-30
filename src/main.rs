@@ -7,6 +7,7 @@ use clap::{Parser, Subcommand};
 
 mod discovery;
 mod identify;
+mod metrics;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
