@@ -4,6 +4,7 @@
 use std::str;
 
 use clap::{Parser, Subcommand};
+use metrics::MetricSet;
 
 mod discovery;
 mod identify;
@@ -24,12 +25,8 @@ enum Commands {
     Discover,
     /// Identify the inverter and print the serial number and firmware version
     Identify,
-}
-
-#[derive(Subcommand)]
-enum Query {
-    InverterInfo,
-    RunningInfo,
+    /// Metrics
+    Metrics,
 }
 
 fn main() {
@@ -57,6 +54,29 @@ fn main() {
                         None::<String>
                     }
                 });
+        }
+        Commands::Metrics => {
+            cli.target
+                .or_else(|| {
+                    println!("When performing a request, a target must be provided!");
+                    None
+                })
+                /* `get_base_metrics` umbauen, sodass man ein `&mut MetricSet` reingeben
+                 * kann. Dann hier einen Vektor aus Metric Sets bauen und drüber iterieren.
+                 */
+                .and_then(|target| {
+                    let metric_sets = vec![metrics::et::base_metrics(), metrics::et::battery_metrics()];
+                    for mut metric_set in metric_sets {
+                        match metrics::get_metrics(&target, &mut metric_set) {
+                            Ok(_) => {
+                                println!("{}", metric_set);
+                            }
+                            Err(e) => {
+                                println!("Error retrieving metrics: {e}");
+                            }
+                    }
+                }
+                Some(())});
         }
     }
 }

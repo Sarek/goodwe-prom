@@ -2,19 +2,25 @@ use std::{error::Error, fmt::Display};
 
 use crc16::{MODBUS,State};
 
-pub const DEFAULT_ADDR: u8 = 0x7f;
+pub const DEFAULT_ADDR: u8 = 0xf7;
 
 pub enum Command {
   ReadMulti = 0x03,
+  #[allow(dead_code)]
   WriteSingle = 0x06,
+  #[allow(dead_code)]
   WriteMulti = 0x10,
 }
 
 #[derive(Debug)]
 pub enum ModbusError {
+  #[allow(dead_code)]
   InvalidHeader,
+  #[allow(dead_code)]
   WrongChecksum,
+  #[allow(dead_code)]
   FailedCommand,
+  #[allow(dead_code)]
   PayloadLength,
 }
 
@@ -43,8 +49,8 @@ fn crc(data: &[u8]) -> Vec<u8> {
 pub fn create_command(cmd: Command, addr: u8, reg: u16, param: u16) -> Vec<u8> {
   let mut data: Vec<u8> = Vec::new();
 
-  data.push(cmd as u8);
   data.push(addr);
+  data.push(cmd as u8);
   data.push(((reg >> 8) & 0xff) as u8);
   data.push((reg & 0xff) as u8);
   data.push(((param >> 8) & 0xff) as u8);
@@ -54,12 +60,13 @@ pub fn create_command(cmd: Command, addr: u8, reg: u16, param: u16) -> Vec<u8> {
   data
 }
 
+#[allow(dead_code)]
 pub fn get_payload(data: &Vec<u8>) -> Result<Vec<u8>, ModbusError> {
   // We do not get real Modbus packets back, but they look like AA55 protocol packets
-  // Let's validate them anyway :-)
+  // Let's validate them anyway.
 
-  // CRC
-  if State::<MODBUS>::calculate(data) != 0 {
+  // CRC, The AA55 header is not part of the CRC
+  if State::<MODBUS>::calculate(&data[2..]) != 0 {
     return Err(ModbusError::WrongChecksum);
   }
 
@@ -79,14 +86,15 @@ pub fn get_payload(data: &Vec<u8>) -> Result<Vec<u8>, ModbusError> {
   }
 
   // Does the actual remaining length match the advertised payload length
-  let payload_length = (data.len() - 3) as u8; // length byte + payload + CRC
-  if data.next() != Some(&(payload_length - 3)) {
+  let actual_length = (data.len() - 3) as u8; // length + payload + CRC
+  let payload_length = data.next();
+  if payload_length != Some(&actual_length) {
     return Err(ModbusError::PayloadLength);
   }
 
   // TODO: This is most likely not optimal, and certainly not very nice.
   let mut retval: Vec<u8> = Vec::new();
-  while payload_length > 0 {
+  for _ in 1..(actual_length + 1) { // add 1 to the actual length, we already consumed the length byte
       retval.push(data.next().unwrap().clone());
   }
   Ok(retval)
