@@ -1,6 +1,6 @@
 use super::definitions::{
-    Current, Energy, Frequency, Integer, LargeEnergy, LargePower, MetricSet, Percentage, Power,
-    Temperature, Voltage,
+    Current, Decimal, Energy, FloatEnergy, Frequency, Integer, LargeEnergy, LargePower, MetricSet,
+    Percentage, Power, Temperature, Voltage,
 };
 
 const METRIC_VOLTAGE_PV: &str = "voltage_pv_volts";
@@ -22,6 +22,16 @@ const METRIC_LOAD: &str = "load_watts";
 const METRIC_TEMP: &str = "temperature_celsius";
 
 const METRIC_INT_VOLTAGE: &str = "voltage_internal_volts";
+
+const METRIC_ACTIVE_POWER: &str = "active_power_watts";
+const METRIC_METER_ACTIVE_POWER: &str = "meter_active_power_watts";
+const METRIC_METER_REACTIVE_POWER: &str = "meter_reactive_power_var";
+const METRIC_METER_APPARENT_POWER: &str = "meter_apparent_power_va";
+
+const METRIC_VOLTAGE_METER: &str = "voltage_meter_volts";
+const METRIC_CURRENT_METER: &str = "current_meter_amperes";
+
+const METRIC_POWER_FACTOR: &str = "power_factor";
 
 pub fn base_metrics() -> MetricSet {
     let metrics = vec![
@@ -126,6 +136,56 @@ pub fn battery_metrics() -> MetricSet {
 
     MetricSet {
         base: 37000,
+        metrics,
+    }
+}
+
+pub fn meter_metrics() -> MetricSet {
+    let metrics = vec![
+        Integer::easy(36000, "commode", "none", "none"),
+        Integer::easy(36001, "rssi", "none", "none"),
+        Integer::easy(36002, "manufacture_code", "none", "none"),
+        // 1: correct, 2: reverse, 3: incorrect, 0: not checked
+        Integer::easy(36003, "meter_test_status", "none", "none"),
+        // 1: OK, 0: NOK
+        Integer::easy(36004, "meter_comm_status", "none", "none"),
+        Power::easy(36005, METRIC_ACTIVE_POWER, "phase", "L1"),
+        Power::easy(36006, METRIC_ACTIVE_POWER, "phase", "L2"),
+        Power::easy(36007, METRIC_ACTIVE_POWER, "phase", "L3"),
+        Power::easy(36008, METRIC_ACTIVE_POWER, "phase", "all"),
+        Power::easy(36009, "reactive_power_total_var", "phase", "all"),
+        Decimal::easy(36010, METRIC_POWER_FACTOR, "phase", "L1"),
+        Decimal::easy(36011, METRIC_POWER_FACTOR, "phase", "L2"),
+        Decimal::easy(36012, METRIC_POWER_FACTOR, "phase", "L3"),
+        Decimal::easy(36013, METRIC_POWER_FACTOR, "phase", "all"),
+        Frequency::easy(36014, "meter_frequency_hertz", "none", "none"),
+        FloatEnergy::easy(36015, "meter_energy_total_kwh", "type", "export"),
+        FloatEnergy::easy(36017, "meter_energy_total_kwh", "type", "import"),
+        LargePower::easy(36019, METRIC_METER_ACTIVE_POWER, "phase", "L1"),
+        LargePower::easy(36021, METRIC_METER_ACTIVE_POWER, "phase", "L2"),
+        LargePower::easy(36023, METRIC_METER_ACTIVE_POWER, "phase", "L3"),
+        LargePower::easy(36025, METRIC_METER_ACTIVE_POWER, "phase", "all"),
+        LargePower::easy(36027, METRIC_METER_REACTIVE_POWER, "phase", "L1"),
+        LargePower::easy(36029, METRIC_METER_REACTIVE_POWER, "phase", "L2"),
+        LargePower::easy(36031, METRIC_METER_REACTIVE_POWER, "phase", "L3"),
+        LargePower::easy(36033, METRIC_METER_REACTIVE_POWER, "phase", "all"),
+        LargePower::easy(36035, METRIC_METER_APPARENT_POWER, "phase", "L1"),
+        LargePower::easy(36037, METRIC_METER_APPARENT_POWER, "phase", "L2"),
+        LargePower::easy(36039, METRIC_METER_APPARENT_POWER, "phase", "L3"),
+        LargePower::easy(36041, METRIC_METER_APPARENT_POWER, "phase", "all"),
+        // 0: Single Phase, 1: 3P3W, 2: 3P4W, 3: HomeKit
+        Integer::easy(36043, "meter_type", "none", "none"),
+        Integer::easy(36044, "meter_sw_version", "none", "none"),
+        Voltage::easy(36052, METRIC_VOLTAGE_METER, "phase", "L1"),
+        Voltage::easy(36053, METRIC_VOLTAGE_METER, "phase", "L2"),
+        Voltage::easy(36054, METRIC_VOLTAGE_METER, "phase", "L3"),
+        Current::easy(36055, METRIC_CURRENT_METER, "phase", "L1"),
+        Current::easy(36056, METRIC_CURRENT_METER, "phase", "L2"),
+        Current::easy(36057, METRIC_CURRENT_METER, "phase", "L3"),
+    ];
+
+    MetricSet {
+        base: 36000,
         metrics,
     }
 }

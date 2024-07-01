@@ -659,6 +659,59 @@ impl Display for LargeEnergy {
     }
 }
 
+pub struct FloatEnergy {
+    base: BaseMetric,
+    value: Option<f32>,
+}
+
+impl FloatEnergy {
+    pub fn new(register: u16, metric_name: &str, labels: Vec<KV<String, String>>) -> Self {
+        let mut metric_name: String = metric_name.to_owned();
+        metric_name.insert_str(0, METRIC_NAME_PREFIX);
+        let base = BaseMetric::new(MetricType::Counter, metric_name, labels, register);
+        Self { base, value: None }
+    }
+
+    pub fn easy(register: u16, metric_name: &str, key: &str, value: &str) -> Box<dyn Metric> {
+        Box::new(Self::new(
+            register,
+            metric_name,
+            vec![KV {
+                key: key.to_string(),
+                value: value.to_string(),
+            }],
+        ))
+    }
+}
+
+impl Metric for FloatEnergy {
+    fn read_data(&mut self, base_register: u16, data: &[u8]) -> Result<(), MetricReadError> {
+        let value =
+            get_register_bytes::<4>(&data, self.base.register as usize, base_register as usize)?;
+        self.value = Some(f32::from_be_bytes(value));
+
+        Ok(())
+    }
+
+    fn get_register(&self) -> u16 {
+        self.base.get_register()
+    }
+
+    fn get_name(&self) -> String {
+        self.base.metric_name.clone()
+    }
+
+    fn get_type(&self) -> MetricType {
+        self.base.metric_type
+    }
+}
+
+impl Display for FloatEnergy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {}", self.base, self.value.unwrap_or(f32::NAN))
+    }
+}
+
 pub struct Integer {
     base: BaseMetric,
     value: Option<i16>,
@@ -709,5 +762,59 @@ impl Metric for Integer {
 impl Display for Integer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} {}", self.base, self.value.unwrap_or(i16::MIN))
+    }
+}
+
+pub struct Decimal {
+    base: BaseMetric,
+    value: Option<f32>,
+}
+
+impl Decimal {
+    pub fn new(register: u16, metric_name: &str, labels: Vec<KV<String, String>>) -> Self {
+        let mut metric_name: String = metric_name.to_owned();
+        metric_name.insert_str(0, METRIC_NAME_PREFIX);
+        let base = BaseMetric::new(MetricType::Counter, metric_name, labels, register);
+        Self { base, value: None }
+    }
+
+    pub fn easy(register: u16, metric_name: &str, key: &str, value: &str) -> Box<dyn Metric> {
+        Box::new(Self::new(
+            register,
+            metric_name,
+            vec![KV {
+                key: key.to_string(),
+                value: value.to_string(),
+            }],
+        ))
+    }
+}
+
+impl Metric for Decimal {
+    fn read_data(&mut self, base_register: u16, data: &[u8]) -> Result<(), MetricReadError> {
+        let value =
+            get_register_bytes::<2>(&data, self.base.register as usize, base_register as usize)?;
+        let value = i16::from_be_bytes(value);
+        self.value = Some(value as f32 / 1000.0);
+
+        Ok(())
+    }
+
+    fn get_register(&self) -> u16 {
+        self.base.get_register()
+    }
+
+    fn get_name(&self) -> String {
+        self.base.metric_name.clone()
+    }
+
+    fn get_type(&self) -> MetricType {
+        self.base.metric_type
+    }
+}
+
+impl Display for Decimal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {}", self.base, self.value.unwrap_or(f32::NAN))
     }
 }
