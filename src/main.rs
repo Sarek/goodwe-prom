@@ -65,7 +65,8 @@ fn main() {
                  * kann. Dann hier einen Vektor aus Metric Sets bauen und drüber iterieren.
                  */
                 .and_then(|target| {
-                    let metric_sets = vec![metrics::et::base_metrics(), metrics::et::battery_metrics()];
+                    let metric_sets =
+                        vec![metrics::et::base_metrics(), metrics::et::battery_metrics()];
                     for mut metric_set in metric_sets {
                         match metrics::get_metrics(&target, &mut metric_set) {
                             Ok(_) => {
@@ -74,9 +75,10 @@ fn main() {
                             Err(e) => {
                                 println!("Error retrieving metrics: {e}");
                             }
+                        }
                     }
-                }
-                Some(())});
+                    Some(())
+                });
         }
     }
 }
