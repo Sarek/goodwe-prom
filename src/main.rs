@@ -3,8 +3,8 @@
 
 use std::str;
 
+use axum::http::StatusCode;
 use clap::{Parser, Subcommand};
-use metrics::MetricSet;
 
 mod discovery;
 mod identify;
@@ -27,9 +27,12 @@ enum Commands {
     Identify,
     /// Metrics
     Metrics,
+    /// Serve a metrics page that Prometheus can scrape
+    Prometheus,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let cli = Cli::parse();
 
     match &cli.command {
@@ -83,5 +86,55 @@ fn main() {
                     Some(())
                 });
         }
+        Commands::Prometheus => {
+            use axum::{routing::get, Router};
+            let target = cli
+                .target
+                .or_else(|| {
+                    println!("When performing a request, a target must be provided!");
+                    None
+                })
+                .unwrap();
+
+            let app = Router::new().route("/", get(|| async { all_metrics(target).await }));
+
+            let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+            axum::serve(listener, app).await.unwrap();
+        }
     }
+}
+
+type ResponseWithCode = (StatusCode, String);
+type ResponseResult = Result<String, ResponseWithCode>;
+
+async fn all_metrics(target: String) -> ResponseResult {
+    use std::fmt::Write as _;
+
+    let mut response = String::new();
+
+    let metric_sets = vec![
+        metrics::et::base_metrics(),
+        metrics::et::battery_metrics(),
+        metrics::et::meter_metrics(),
+    ];
+    for mut metric_set in metric_sets {
+        match metrics::get_metrics(&target, &mut metric_set) {
+            Ok(_) => match write!(&mut response, "{}", metric_set) {
+                Ok(_) => (),
+                Err(e) => {
+                    return Err((
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Failed to transform metrics: {e}"),
+                    ));
+                }
+            },
+            Err(e) => {
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Error retrieving metrics: {e}"),
+                ));
+            }
+        }
+    }
+    Ok(response)
 }
