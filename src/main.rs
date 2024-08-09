@@ -1,7 +1,7 @@
 #![feature(iter_next_chunk)]
 #![feature(iter_advance_by)]
 
-use std::str;
+use std::{process::ExitCode, str};
 
 use axum::http::StatusCode;
 use clap::{Parser, Subcommand};
@@ -16,7 +16,12 @@ mod metrics;
 struct Cli {
     #[command(subcommand)]
     command: Commands,
+    /// The IP address of the inverter to talk to
+    #[clap(long, env)]
     target: Option<String>,
+    /// The port number to serve the Prometheus metrics from (only required in the Prometheus mode)
+    #[clap(long, env)]
+    port: Option<u16>,
 }
 
 #[derive(Subcommand)]
@@ -32,75 +37,59 @@ enum Commands {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> ExitCode {
     let cli = Cli::parse();
-
-    match &cli.command {
-        Commands::Discover => {
-            let _ = discovery::discover_inverters();
-        }
-        Commands::Identify => {
-            cli.target
-                .or_else(|| {
-                    println!("When performing a request, a target must be provided!");
-                    None
-                })
-                .and_then(|target| match identify::query_id(&target) {
-                    Ok(id) => {
-                        println!("Inverter Identification");
-                        println!(" - Serial Number: {}", id.serial_number);
-                        println!(" - Firmware: {}", id.firmware);
-                        None::<String>
-                    }
-                    Err(e) => {
-                        println!("Error while identifying inverter: {e}");
-                        None::<String>
-                    }
-                });
-        }
-        Commands::Metrics => {
-            cli.target
-                .or_else(|| {
-                    println!("When performing a request, a target must be provided!");
-                    None
-                })
-                /* `get_base_metrics` umbauen, sodass man ein `&mut MetricSet` reingeben
-                 * kann. Dann hier einen Vektor aus Metric Sets bauen und drüber iterieren.
-                 */
-                .and_then(|target| {
-                    let metric_sets = vec![
-                        metrics::et::base_metrics(),
-                        metrics::et::battery_metrics(),
-                        metrics::et::meter_metrics(),
-                    ];
-                    for mut metric_set in metric_sets {
-                        match metrics::get_metrics(&target, &mut metric_set) {
-                            Ok(_) => {
-                                println!("{}", metric_set);
-                            }
-                            Err(e) => {
-                                println!("Error retrieving metrics: {e}");
-                            }
+    if let Some(target) = cli.target {
+        match &cli.command {
+            Commands::Discover => {
+                let _ = discovery::discover_inverters();
+                ExitCode::SUCCESS
+            }
+            Commands::Identify => match identify::query_id(&target) {
+                Ok(id) => {
+                    println!("Inverter Identification");
+                    println!(" - Serial Number: {}", id.serial_number);
+                    println!(" - Firmware: {}", id.firmware);
+                    ExitCode::SUCCESS
+                }
+                Err(e) => {
+                    println!("Error while identifying inverter: {e}");
+                    ExitCode::FAILURE
+                }
+            },
+            Commands::Metrics => {
+                let metric_sets = vec![
+                    metrics::et::base_metrics(),
+                    metrics::et::battery_metrics(),
+                    metrics::et::meter_metrics(),
+                ];
+                for mut metric_set in metric_sets {
+                    match metrics::get_metrics(&target, &mut metric_set) {
+                        Ok(_) => {
+                            println!("{}", metric_set);
+                        }
+                        Err(e) => {
+                            println!("Error retrieving metrics: {e}");
                         }
                     }
-                    Some(())
-                });
-        }
-        Commands::Prometheus => {
-            use axum::{routing::get, Router};
-            let target = cli
-                .target
-                .or_else(|| {
-                    println!("When performing a request, a target must be provided!");
-                    None
-                })
-                .unwrap();
+                }
+                ExitCode::SUCCESS
+            }
+            Commands::Prometheus => {
+                use axum::{routing::get, Router};
 
-            let app = Router::new().route("/", get(|| async { all_metrics(target).await }));
+                let app = Router::new().route("/", get(|| async { all_metrics(target).await }));
 
-            let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-            axum::serve(listener, app).await.unwrap();
+                let listener = tokio::net::TcpListener::bind("0.0.0.0:8080")
+                    .await
+                    .unwrap();
+                axum::serve(listener, app).await.unwrap();
+                ExitCode::SUCCESS
+            }
         }
+    } else {
+        println!("Please provide a target either as a command line argument or in the GOODWE_TARGET environment variable!");
+        ExitCode::FAILURE
     }
 }
 

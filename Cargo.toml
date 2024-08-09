@@ -5,6 +5,6 @@ edition = "2021"
 
 [dependencies]
 axum = { version = "0.7.5", features = ["http2"] }
-clap = { version = "4.5.3", features = ["derive"] }
+clap = { version = "4.5.3", features = ["derive", "env"] }
 crc16 = "0.4.0"
 tokio = { version = "1.39.2", features = ["macros", "rt-multi-thread"] }
