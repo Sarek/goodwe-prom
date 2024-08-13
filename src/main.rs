@@ -19,9 +19,6 @@ struct Cli {
     /// The IP address of the inverter to talk to
     #[clap(long, env)]
     target: Option<String>,
-    /// The port number to serve the Prometheus metrics from (only required in the Prometheus mode)
-    #[clap(long, env)]
-    port: Option<u16>,
 }
 
 #[derive(Subcommand)]
@@ -80,15 +77,13 @@ async fn main() -> ExitCode {
 
                 let app = Router::new().route("/", get(|| async { all_metrics(target).await }));
 
-                let listener = tokio::net::TcpListener::bind("0.0.0.0:8080")
-                    .await
-                    .unwrap();
+                let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
                 axum::serve(listener, app).await.unwrap();
                 ExitCode::SUCCESS
             }
         }
     } else {
-        println!("Please provide a target either as a command line argument or in the GOODWE_TARGET environment variable!");
+        println!("Please provide a target either as a command line argument or in the TARGET environment variable!");
         ExitCode::FAILURE
     }
 }
