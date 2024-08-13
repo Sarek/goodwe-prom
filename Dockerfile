@@ -13,4 +13,4 @@ COPY --from=builder /src/target/release/goodwe-prom /
 
 EXPOSE 8080/tcp
 
-CMD ["/goodwe-prom"]
+CMD ["/goodwe-prom", "prometheus"]
